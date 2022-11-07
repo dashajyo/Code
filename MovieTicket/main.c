@@ -16,6 +16,7 @@ void display_movies();
 void display_bookings();
 void book_tickets();
 void cancel_tickets();
+void remove_booking();
 void add_bookings(char *);
 void sort_booking();
 
@@ -25,6 +26,7 @@ struct movie_list
     struct movie_list *next;
 };
 struct movie_list *movie_list_head=NULL;
+
 
 struct booking_list
 {
@@ -36,15 +38,15 @@ struct booking_list *booking_list_head=NULL;
 void init()
 {
     printf("\033[0;32mInitialising....Please wait... \033[0m\n\n");
-    sleep(2);
-    list_movies();
+    //sleep(2);
+    list_movies(&movie_list_head);
     list_bookings();
 }
 
 void sort_booking()
 {
     int flag=1,res;
-    struct booking_list *head;
+    struct booking_list *head=NULL;
     struct booking_list *temp=NULL;
     char *name=(char *)malloc(BOOKING_DETAILS);
     while(flag)
@@ -66,12 +68,13 @@ void sort_booking()
        }
        temp = head;
     }
+    free(name);
 }
-void list_movies()
+void list_movies(struct movie_list **head)
 {
    FILE *fptr=NULL;
-   struct movie_list *first;
-   struct movie_list *temp;
+   struct movie_list *node=NULL;
+   struct movie_list *temp=*head;
    char *movie=(char *)malloc(MOVIE_NAME);
    
    fptr=fopen("movie_list.txt","r");
@@ -81,32 +84,33 @@ void list_movies()
    }
    while(fgets(movie,MOVIE_NAME,fptr))
    {
-        temp=movie_list_head;
-        first=malloc(sizeof(struct movie_list));
-        strcpy(first->movie_name,movie);
-        first->next=NULL;
-        if (movie_list_head == NULL)
+        temp=*head;
+        node=(struct movie_list*)malloc(sizeof(struct movie_list));
+        strcpy(node->movie_name,movie);
+        node->next=NULL;
+        if (*head == NULL)
         {
-            movie_list_head=first;
+            *head=node;
         }
         else
         {
             while (temp->next != NULL) temp=temp->next;
-            temp->next=first;
+            temp->next=node;
         }
         memset(movie,'\0',strlen(movie));
    }
    fclose(fptr);
+   free(movie);
 }
 
 void list_bookings()
 {
     FILE *fptr=NULL;
     char book[BOOKING_DETAILS];
-    struct booking_list *first;
-    struct booking_list *temp;
+    struct booking_list *first=NULL;
+    struct booking_list *temp=NULL;
 
-    fptr=fopen("booking_list.txt","a+");
+    fptr=fopen("booking_list.txt","r");
     if(fptr == NULL)
     {
         printf("ERROR: Reading file booking_list.txt\n");
@@ -131,12 +135,11 @@ void list_bookings()
     fclose(fptr);
 }
 
-void display_movies()
+void display_movies(struct movie_list *head)
 {
-    char *token,*rest;
+    char *token;
+    char *name=(char *)malloc(MOVIE_NAME);
     char opt='n',junk;
-    struct movie_list *head;
-    head=movie_list_head;
     if ( head == NULL )
     {
         printf("OOPS! NO MOVIES ON SCREEN\n");
@@ -147,15 +150,20 @@ void display_movies()
         printf("SI.NO\tMOVIE_NAME\tSHOW_TIME\n");
         while(head != NULL)
         {
-            rest=head->movie_name;
-            while((token=strtok_r(rest,"|",&rest)))
-                    printf("%s\t",token);
+            strcpy(name,head->movie_name);
+            token=strtok(name,"|");
+            while(token != NULL)
+            {
+                printf("%s\t",token);
+                token=strtok(NULL,"|");
+            }
             printf("\r");
             head = head->next;
+            memset(name,'\0',strlen(name));
         }
     }
     scanf("%c",&junk);
-    printf("Return to Dashboard?(y/n):");
+    printf("\nReturn to Dashboard?(y/n):");
     scanf("%c",&opt);
     while(opt != 'y')
     {
@@ -168,10 +176,11 @@ void display_movies()
 
 void display_bookings()
 {
-    char *token,*rest;
+    char *token;
+    char *book=(char *)malloc(BOOKING_DETAILS);
     char opt='n',junk;
     int si_no=1;
-    struct booking_list *head;
+    struct booking_list *head=NULL;
     head=booking_list_head;
     if ( booking_list_head == NULL )
     {
@@ -179,21 +188,26 @@ void display_bookings()
     }
     else
     {
-        printf("\n\tBOOKED DETAILS\n");
-        printf("SI.NO\tBOOKING_NAME\tMOVIE_NAME\tTICKET_COUNT\tBOOKING_DATE\tSHOW_TIME\n");
+        printf("\n\t\t\t\tBOOKED DETAILS\n");
+        printf("SI.ID\tBOOKING_NAME\tMOVIE_NAME\tTICKET_COUNT\tBOOKING_DATE\tSHOW_TIME\n");
         sort_booking();
         while(head != NULL)
         {
             printf("%d\t",si_no++);
-            strcpy(rest,head->booking_name);
-            while((token=strtok_r(rest,"|",&rest)))
-                    printf("%s\t\t",token);
+            strcpy(book,head->booking_name);
+            token=strtok(book,"|");
+            while(token != NULL)
+            {
+                printf("%s\t\t",token);
+                token=strtok(NULL,"|");
+            }
             printf("\r");
             head = head->next;
+            memset(book,'\0',strlen(book));
         }
     }
     scanf("%c",&junk);
-    printf("Return to Dashboard?(y/n):");
+    printf("\nReturn to Dashboard?(y/n):");
     scanf("%c",&opt);
     while(opt != 'y')
     {
@@ -214,7 +228,7 @@ void book_tickets()
     char junk;
     char *booking_detail=malloc(BOOKING_DETAILS);
 
-    printf("Enter Movie Name\t\t:");
+    printf("\nEnter Movie Name\t\t:");
     scanf("%c",&junk);
     scanf("%[^\n]", m_name);
     printf("Choose Booking Date(DD MM YYYY)\t:");
@@ -228,11 +242,12 @@ void book_tickets()
     scanf("%[^\n]", b_name);
     sprintf(booking_detail,"%s|%s|%d|%d-%d-%d|%s\n",b_name,m_name,s_count,b_day,b_month,b_year,b_time);
     add_bookings(booking_detail);
+    free(booking_detail);
 }
 
 void add_bookings(char *booking_detail)
 {
-    struct booking_list *head;
+    struct booking_list *head=NULL;
     struct booking_list *node=malloc(sizeof(struct booking_list));
     strcpy(node->booking_name,booking_detail);
     node->next=NULL;
@@ -248,15 +263,69 @@ void add_bookings(char *booking_detail)
     }
 }
 
+void remove_booking(struct booking_list **head,char *book)
+{
+    struct booking_list *node=*head;
+    struct booking_list *prev;
+    
+    if ( node != NULL && !strcmp(node->booking_name,book))
+    {
+        *head = node->next;
+        free(node);
+    }
+    else
+    {
+        while (node != NULL && strcmp(node->booking_name,book))
+        {
+            prev = node;
+            node = node->next;
+        }
+        if (node == NULL)
+        {
+            printf("NOT DELETED");
+        }
+        else
+        {
+            prev->next = node->next;
+        }
+        free(node);
+    }
+}
 void cancel_tickets()
 {
-    
+    int si_id,si_id_org=1;
+    char opt='n',junk;
+    struct booking_list *head=NULL;
+    head=booking_list_head;
+    printf("\nPLEASE ENTER YOUR BOOKING SI.ID TO CANCEL:");
+    scanf("%d",&si_id);
+    if ( booking_list_head == NULL )
+    {
+        printf("NO TICKETS ARE BOOKED WITH SI.ID: %d!!\n",si_id);
+    }
+    else
+    {
+        while(head != NULL)
+        {
+            if ( si_id_org == si_id )
+            {
+                printf("DELETED: %s\n",head->booking_name);
+                remove_booking(&booking_list_head,head->booking_name);
+                break;
+            }
+            else
+            {
+                head = head->next;
+                si_id_org++;
+            }
+        }                                                                       
+    } 
 }
 
 void deinit()
 {
     FILE *fptr=NULL;
-    struct booking_list *head;
+    struct booking_list *head=NULL;
     fptr=fopen("booking_list.txt","w");
     head=booking_list_head;
     if(fptr==NULL)
@@ -267,6 +336,7 @@ void deinit()
     {
         while(head != NULL)
         {
+            printf("%s",head->booking_name);
             fprintf(fptr,"%s",head->booking_name);
             head = head->next;
         }
@@ -282,17 +352,17 @@ int main(void)
     init();
     while(1)
     {
-        printf("======================================================================\n");
+        printf("\n======================================================================\n");
         printf("                            D A S H B O A R D\n");
         printf("======================================================================\n\n");
         printf("---------------------\n");
-        printf("SI.NO\tOPTION\n");
+        printf("OPTION.NO\tOPTION\n");
         printf("---------------------\n");
-        printf("1\tMOVIES\n");
-        printf("2\tYOUR BOOKING\n");
-        printf("3\tBOOK A TICKET\n");
-        printf("4\tCANCEL A TICKET\n");
-        printf("5\tEXIT\n");
+        printf("1\t\tMOVIES\n");
+        printf("2\t\tYOUR BOOKING\n");
+        printf("3\t\tBOOK A TICKET\n");
+        printf("4\t\tCANCEL A TICKET\n");
+        printf("5\t\tEXIT\n");
         printf("\nENTER YOUR OPTION:");
         printf("\e[5m |\e[0m");
         scanf("%d",&option);
@@ -300,7 +370,7 @@ int main(void)
         {
             switch(option)
             {
-                case 1:display_movies();break;
+                case 1:display_movies(movie_list_head);break;
                 case 2:display_bookings();break;
                 case 3:book_tickets();break;
                 case 4:cancel_tickets();break;
